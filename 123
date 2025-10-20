@@ -1,0 +1,81 @@
+#include <iostream>
+#include <cmath>
+
+using namespace std;
+
+
+struct Node {
+    int x;
+    int y;
+    float f;
+    Node* parent;
+
+    Node() : x(0), y(0), f(0.0f), parent(nullptr) {}
+    Node(int x, int y)
+        : x(x), y(y), f(0.0f), parent(nullptr){}
+};
+
+float calculateF(Node start, Node goal){
+    return 1 + sqrt((start.x - goal.x)*(start.x - goal.x) + (start.y - goal.y)*(start.y - goal.y));
+}
+
+template <typename T, int X, int Y>
+void printTab(T (&tab)[X][Y]){
+    for (int i=0; i<X; i++){
+        for (int j=0; j<Y; j++){
+            cout << tab[i][j] << " ";
+        }
+        cout << endl;
+    }
+}
+
+template <typename T, int X, int Y> // dostosowane
+int getX(T (&tab)[X][Y]){
+    int i=0;
+    for (i=0; i<Y; i++){
+    }
+    return i;
+}
+
+template <typename T, int X, int Y> // dostosowane
+int getY(T (&tab)[X][Y]){
+    int i=0;
+    for (i=0; i<X; i++){
+    }
+    return i;   
+}
+
+
+
+void Astar (Node start, Node Goal, Node tab, Node tab1, Node tab2, Node tab3){ // tab1 grid, tab2 otwarta, tab3 zamknieta
+
+}
+
+
+
+// funkcja zwracajaca wspolrzedne x i y
+
+// wracajac dopoki koncowy node ma rodzica to prinotwac
+
+
+// 1. 3 listy, z przeszkodami (5 to blokada, 0 mozna przejsc), otwarta i zamknieta
+
+// 2. pozycja startowa pojawia siê na zamknietej
+
+// 3. sprawdza kierunki gdzie mo¿e wejœæ
+
+// 4. przypisuje miejsca obok (gdzie nie ma blokady), liczy f dla miejsca i zapisuje rodzica tych miejsc
+// (jezeli rodzic ju¿ jest a f jest mniejsze to zamienia rodzica
+
+// 5. Jak nie ma ju¿ wolnych miejsc to wybieramy z listy otwartej t¹ z najmniejszym f i dodajemy na zamkniêt¹ (usuwamy z otwartej) , powtarzamy
+
+
+int grid[1][6] = {{0,0,0,0,0,0}};
+Node tabOpened[6][6];
+Node tabClosed[6][6];
+
+
+int main()
+{
+    return 0;
+}
