@@ -10,51 +10,50 @@ using namespace NXT;
 Comm::NXTComm comm;
 
 
-int convert(int k, int orient)
-{
-    int diff = orient - k;
-
-    if (diff > 180)
-    {
-        diff -= 360;
-    }
-    else if (diff < -180)
-    {
-        diff = 360 + diff;
-    }
-    return diff;
+int convert(int k, int orient) { // funkcja pokazuje ile stopni od orientu jest cel (minusowe wartosci to orient jest na lewo od celu)
+    orient = orient - k;
+    if (orient > 180) orient = orient - 360;
+    else if (orient < -180) orient = 360 + orient;
+    return orient;
 }
 
 
-vector<int> steer(int k1, int k2, int k, int orient) {
-
+vector<int> steer(int k1, int k2, int k, int orient, int ksi) {
     int cte = convert(k, orient);
-
     if (cte == 0) {
         k1 = 30;
         k2 = 30;
     }
     else if (cte < 0) {
-        if (abs(cte) > k1) {
+        if (abs(cte) > k1) { // k1 to predkosc lewego kola
             k2 = 0;
         }
         else {
-            k2 = k1 + (1 * cte);
+            k2 = k1 + (ksi * cte);
         }
     }
+
     else if (cte > 0) {
         if (cte > k2) {
             k1 = 0;
         }
         else {
-            k1 = k2 - (1 * cte);
+            k1 = k2 - (ksi * cte);
         }
     }
-    vector<int> wyjscie;
-    wyjscie.push_back(k1);
-    wyjscie.push_back(k2);
-    return wyjscie;
+    vector<int> v;
+    v.push_back(k1);
+    v.push_back(k2);
+    return v;
 }
+
+int color;
+int k1 = 30;
+int k2 = 30;
+int kierunek = 0;
+int ksi = 1;
+int orient;
+
 
 
 struct RGB {
@@ -64,10 +63,10 @@ struct RGB {
 };
 
 
-const RGB C_WHITE = { 525, 417, 381 }; // 0
-const RGB C_GREEN = { 265, 359, 306 }; // 1
-const RGB C_RED = { 523, 245, 236 }; // 2
-const RGB C_BLACK = { 219,  133,  129 }; // 3
+const RGB C_WHITE = { 525, 417, 381 };
+const RGB C_GREEN = { 265, 359, 306 };
+const RGB C_RED = { 523, 245, 236 };
+const RGB C_BLACK = { 219,  133,  129 };
 
 
 const int TOL = 50;
@@ -88,10 +87,6 @@ int classifyWithTolerance(int r, int g, int b) {
     if (matchRGB(r, g, b, C_BLACK)) return 3;
     return -1;
 }
-
-
-
-
 
 
 
@@ -134,9 +129,6 @@ void computePositionFromColor(
 
 
 
-
-
-
 void normalize(double belief[3][5]) {
     double sum = 0.0;
 
@@ -150,9 +142,6 @@ void normalize(double belief[3][5]) {
         for (int x = 0; x < 5; x++)
             belief[y][x] /= sum;
 }
-
-
-
 
 
 
@@ -253,12 +242,6 @@ void moveWest(double belief[3][5]) {
 
 
 
-
-
-
-
-
-
 void printMostProbable(double belief[3][5]) {
     double maxP = 0.0;
     int bestY = -1, bestX = -1;
@@ -277,9 +260,6 @@ void printMostProbable(double belief[3][5]) {
         << bestY << "," << bestX
         << ") P=" << maxP << endl;
 }
-
-
-
 
 
 
@@ -305,7 +285,6 @@ void resetBelief(double belief[3][5]) {
 
 
 
-
 int main() {
     if (!NXT::OpenBT(&comm)) {
         cout << "Brak po³¹czenia." << endl;
@@ -315,17 +294,16 @@ int main() {
 
     int r, g, b;
 
-    NXT::Sensor::SetSonar(&comm, IN_2);
+    NXT::Sensor::SetSonar(&comm, IN_3);
     Wait(50);
 
-    double ksi = 0.2;
     int target = 0;
 
     int lastMoveTarget = target;
     bool didMove = false;
 
-    int k1 = 10;
-    int k2 = 10;
+    int k1 = 20;
+    int k2 = 20;
 
     int table[3][5] = {
     {1, 2, 0, 2, 0},
@@ -420,17 +398,17 @@ int main() {
         if (abs(cte) < 5) {
             NXT::Motor::Stop(&comm, OUT_B, true);
             NXT::Motor::Stop(&comm, OUT_C, true);
-            NXT::Sensor::SetColor(&comm, IN_3, 'r');
+            NXT::Sensor::SetColor(&comm, IN_2, 'r');
             Wait(100);
-            r = NXT::Sensor::GetValue(&comm, IN_3);
+            r = NXT::Sensor::GetValue(&comm, IN_2);
 
-            NXT::Sensor::SetColor(&comm, IN_3, 'g');
+            NXT::Sensor::SetColor(&comm, IN_2, 'g');
             Wait(100);
-            g = NXT::Sensor::GetValue(&comm, IN_3);
+            g = NXT::Sensor::GetValue(&comm, IN_2);
 
-            NXT::Sensor::SetColor(&comm, IN_3, 'b');
+            NXT::Sensor::SetColor(&comm, IN_2, 'b');
             Wait(100);
-            b = NXT::Sensor::GetValue(&comm, IN_3);
+            b = NXT::Sensor::GetValue(&comm, IN_2);
 
 
             cout << "R: " << r << "   G: " << g << "   B: " << b << endl;
@@ -463,11 +441,12 @@ int main() {
             }
 
 
-            steer(k1, k2, target, orient);
+
+            steer(k1, k2, target, orient, ksi);
             NXT::Motor::SetForward(&comm, OUT_C, k1);
             NXT::Motor::SetForward(&comm, OUT_B, k2);
-            cout << "\n\n\n\n\n\n\nczekamy 7.2 sekund\n\n\n\n\n\n\n\n";
-            Wait(7200);
+            cout << "\n\n\n\n\n\n\nczekamy 3.6 sekund\n\n\n\n\n\n\n\n";
+            Wait(3600);
             NXT::Motor::Stop(&comm, OUT_B, true);
             NXT::Motor::Stop(&comm, OUT_C, true);
             lastMoveTarget = target;
