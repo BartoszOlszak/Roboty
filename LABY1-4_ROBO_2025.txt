@@ -1,303 +1,3 @@
-//#include "NXT++.h"
-//#include <iostream>
-//#include <conio.h>
-//using namespace std;
-//using namespace NXT;
-//
-//Comm::NXTComm comm;
-//
-//
-//
-//
-//int main() {
-//	if (NXT::OpenBT(&comm)) {
-//
-//		int x = 30;//szybkość jazdy w przód i tył
-//		bool side = false; //jesli chcemy żeby roobt wyczytywał z prawej czarną linię to true, a jak z lewej to false 
-//
-//
-//		NXT::Sensor::SetColor(&comm, IN_2, 'n');
-//		Wait(50);
-//		
-//		
-//
-//		NXT::StartProgram(&comm, "program1");
-//
-//		NXT::Motor::SetForward(&comm, OUT_B, x);
-//		NXT::Motor::SetForward(&comm, OUT_C, x);
-//
-//		int black = 2;
-//		int color;
-//
-//		while (true) {
-//			if (kbhit()) {
-//				char key = getch();
-//				if (key == 'H' || key == 'h') {
-//					NXT::Motor::Stop(&comm, OUT_B, 0);
-//					NXT::Motor::Stop(&comm, OUT_C, 0);
-//					cout << "STOP\n";
-//					break;
-//				}
-//			}
-//
-//			if (side == true) {
-//				color = NXT::Sensor::GetValue(&comm, IN_2);
-//
-//				if (color < black) {
-//					NXT::Motor::SetForward(&comm, OUT_B, 10);
-//					NXT::Motor::SetReverse(&comm, OUT_C, 10);
-//				}
-//				else {
-//					NXT::Motor::SetForward(&comm, OUT_B, x);
-//					NXT::Motor::SetForward(&comm, OUT_C, x);
-//				}
-//			}
-//			else {
-//				color = NXT::Sensor::GetValue(&comm, IN_2);
-//
-//				if (color < black) {
-//					NXT::Motor::SetForward(&comm, OUT_C, 10);
-//					NXT::Motor::SetReverse(&comm, OUT_B, 10);
-//				}
-//				else {
-//					NXT::Motor::SetForward(&comm, OUT_B, x);
-//					NXT::Motor::SetForward(&comm, OUT_C, x);
-//				}
-//			}
-//		}
-//		
-//
-//		NXT::Sensor::SetColorOff(&comm, IN_2);
-//
-//		NXT::StopProgram(&comm);
-//
-//		return 0;
-//	}
-//}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//#include "NXT++.h"
-//#include <iostream>
-//#include <conio.h>
-//
-//using namespace std;
-//using namespace NXT;
-//
-//Comm::NXTComm comm;
-//
-//int main() {
-//    if (NXT::OpenBT(&comm)) {
-//
-//        int x = 10;      // prędkość jazdy w przód i tył
-//        int black = 1;  
-//        int color;
-//        int distance;
-//
-//        NXT::Sensor::SetColor(&comm, IN_2, 'n');
-//        Wait(50);
-//
-//        NXT::Sensor::SetSonar(&comm, IN_1);
-//        Wait(50);
-//
-//        while (true) {
-//            if (kbhit()) {
-//                char key = getch();
-//                if (key == 'H' || key == 'h') {
-//                    NXT::Motor::Stop(&comm, OUT_B, 0);
-//                    NXT::Motor::Stop(&comm, OUT_C, 0);
-//                    cout << "STOP\n";
-//                    break;  
-//                }
-//            }
-//
-//            color = NXT::Sensor::GetValue(&comm, IN_2);
-//            distance = NXT::Sensor::GetSonarValue(&comm, IN_1);
-//
-//            if (color < black) {
-//                NXT::Motor::SetReverse(&comm, OUT_B, x);
-//                NXT::Motor::SetReverse(&comm, OUT_C, x);
-//                Wait(300);
-//
-//                NXT::Motor::SetForward(&comm, OUT_B, x);
-//                NXT::Motor::SetReverse(&comm, OUT_C, x);
-//                Wait(200);
-//
-//                continue;   
-//            }
-//
-//            if (distance < 30) {
-//                Wait(1100);
-//                NXT::Motor::SetForward(&comm, OUT_B, x);
-//                NXT::Motor::SetForward(&comm, OUT_C, x);
-//            }
-//            else {
-//                NXT::Motor::SetForward(&comm, OUT_B, x);
-//                NXT::Motor::SetReverse(&comm, OUT_C, x);
-//            }
-//        }
-//
-//        NXT::Sensor::SetColorOff(&comm, IN_2);
-//        return 0;
-//    }
-//}
-
-
-
-
-
-
-
-//#include "NXT++.h"
-//#include <iostream>
-//#include <conio.h>
-//
-//using namespace std;
-//using namespace NXT;
-//
-//Comm::NXTComm comm;
-//
-//
-//int convert(int k, int x) {
-//    x = x - k;
-//
-//    if (x > 180)
-//        x = x - 360;
-//    else if (x < -180)
-//        x = 360 + x;
-//
-//    return x;
-//}
-//
-//
-//
-//
-//
-//void steer(int& k1, int& k2, int k, int orient, double ksi) {
-//    int cte = convert(k, orient);
-//
-//
-//    if (cte <= 0) {
-//        if (abs(cte) > k1) {
-//            k2 = k1 * (-1);
-//        }
-//        else {
-//            k2 = k1 + (ksi * cte);
-//        }
-//    }
-//
-//
-//    if (cte > 0) {
-//        if (cte > k2) {
-//            k1 = k2 * (-1);
-//        }
-//        else {
-//            k1 = k2 - (ksi * cte);
-//        }
-//    }
-//
-//    cout << "orient=" << orient << "  cte=" << cte << "  k1=" << k1 << "  k2=" << k2 << endl;
-//}
-//
-//
-//
-//
-//
-//int main() {
-//
-//    if (!NXT::OpenBT(&comm)) {
-//        cout << "Brak połączenia." << endl;
-//        return 1;
-//    }
-//
-//    NXT::Sensor::SetSonar(&comm, IN_1);
-//    Wait(50);
-//
-//    int k1 = 30;
-//    int k2 = 30;
-//    
-//
-//    double ksi = 0.2;
-//    int target = 0;
-//    const int offset = 60;
-//
-//    cout << "Sterowanie kierunkiem:\n"
-//        << "  L -> 0 stopni\n"
-//        << "  K -> 90 stopni \n"
-//        << "  J -> 180 stopni \n"
-//        << "  H -> 270 stopni \n"
-//        << "  Q -> STOP\n\n";
-//
-//    while (true) {
-//        if (_kbhit()) {
-//            char c = _getch();
-//
-//            if (c == 'q' || c == 'Q') {
-//                cout << "Koniec programu." << endl;
-//                NXT::Motor::SetForward(&comm, OUT_C, 0);
-//                NXT::Motor::SetForward(&comm, OUT_B, 0);
-//                break;
-//            }
-//
-//            if (c == 'l' || c == 'L') {
-//                target = 0;
-//                cout << "\nUstawiono target na 0\n";
-//            }
-//            else if (c == 'k' || c == 'K') {
-//                target = 90;
-//                cout << "\nUstawiono target na 90\n";
-//            }
-//            else if (c == 'j' || c == 'J') {
-//                target = 180;
-//                cout << "\nUstawiono target na 180\n";
-//            }
-//            else if (c == 'h' || c == 'H') {
-//                target = 270;
-//                cout << "\nUstawiono target na 270\n";
-//            }
-//        }
-//
-//
-//        int raw = NXT::Sensor::GetSonarValue(&comm, IN_1);
-//        int orient_raw = raw * 2;           
-//
-//        int orient = orient_raw - offset; 
-//        if (orient < 0)      orient += 360;   
-//        if (orient >= 360)   orient -= 360;
-//
-//
-//
-//        steer(k1, k2, target, orient, ksi);
-//
-//        
-//
-//        NXT::Motor::SetForward(&comm, OUT_C, k1);
-//        NXT::Motor::SetForward(&comm, OUT_B, k2);
-//        Wait(300);
-//    }
-//
-//    NXT::Sensor::SetSonarOff(&comm, IN_1);
-//    return 0;
-//}
-
-
-
-
-
-
-/////////////////////////////////// LAB4 //////////////////////////////////////
 #include "NXT++.h"
 #include <iostream>
 #include <conio.h>
@@ -362,22 +62,20 @@ struct RGB {
 };
 
 
-const RGB C_WHITE = { 525, 417, 381 }; // 0
-const RGB C_GREEN = { 265, 359, 306 }; // 1
-const RGB C_RED = { 523, 245, 236 }; // 2
-const RGB C_BLACK = { 219,  133,  129 }; // 3
+const RGB C_WHITE = { 525, 417, 381 };
+const RGB C_GREEN = { 265, 359, 306 };
+const RGB C_RED = { 523, 245, 236 };
+const RGB C_BLACK = { 219,  133,  129 };
 
 
-const int TOL = 50;
 
 bool inRange(int v, int center) {
-    return (v >= center - TOL) && (v <= center + TOL);
+    return (v >= center - 50) && (v <= center + 50);
 }
 
 bool matchRGB(int r, int g, int b, const RGB& c) {
     return inRange(r, c.r) && inRange(g, c.g) && inRange(b, c.b);
 }
-
 
 int classifyWithTolerance(int r, int g, int b) {
     if (matchRGB(r, g, b, C_WHITE)) return 0;
@@ -387,21 +85,12 @@ int classifyWithTolerance(int r, int g, int b) {
     return -1;
 }
 
-
-
-
-
-
-
-// do obliczania prawdopodobienstwa dla jednego pola
 void computePositionFromColor(
 int map[3][5],
 int seenColor,
 double belief[3][5]
 ) {
     int count = 0;
-
-    // liczy ile pól ma dany kolor
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 5; x++) {
             if (map[y][x] == seenColor) {
@@ -415,8 +104,6 @@ double belief[3][5]
     }
 
     double prob = 1.0 / count;
-
-    //przypisanie prawdopodobieństwa
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 5; x++) {
             if (map[y][x] == seenColor) {
@@ -428,12 +115,6 @@ double belief[3][5]
         }
     }
 }
-
-
-
-
-
-
 
 void normalize(double belief[3][5]) {
     double sum = 0.0;
@@ -450,11 +131,6 @@ void normalize(double belief[3][5]) {
 }
 
 
-
-
-
-
-
 void senseColor(
     int map[3][5],
     int seenColor,
@@ -469,8 +145,6 @@ void senseColor(
     }
     normalize(belief);
 }
-
-
 
 
 void moveNorth(double belief[3][5]) {
@@ -490,9 +164,6 @@ void moveNorth(double belief[3][5]) {
             belief[y][x] = next[y][x];
 }
 
-
-
-
 void moveSouth(double belief[3][5]) {
     double next[3][5] = { 0 };
 
@@ -509,8 +180,6 @@ void moveSouth(double belief[3][5]) {
         for (int x = 0; x < 5; x++)
             belief[y][x] = next[y][x];
 }
-
-
 
 void moveEast(double belief[3][5]) {
     double next[3][5] = { 0 };
@@ -529,9 +198,6 @@ void moveEast(double belief[3][5]) {
             belief[y][x] = next[y][x];
 }
 
-
-
-
 void moveWest(double belief[3][5]) {
     double next[3][5] = { 0 };
 
@@ -549,14 +215,6 @@ void moveWest(double belief[3][5]) {
             belief[y][x] = next[y][x];
 }
 
-
-
-
-
-
-
-
-
 void printMostProbable(double belief[3][5]) {
     double maxP = 0.0;
     int bestY = -1, bestX = -1;
@@ -571,18 +229,12 @@ void printMostProbable(double belief[3][5]) {
         }
     }
 
-    cout << "Robot jest najprawdopodobniej na: ("
-        << bestY << "," << bestX
-        << ") P=" << maxP << endl;
+    cout << "Robot z najwiekszym prawdopodobienstwem P = " << maxProb 
+     << " znajduje sie na polu: (" << maxY << "," << maxX << ")" << endl;
 }
 
-
-
-
-
-
 void printBelief(double belief[3][5]) {
-    cout << "\n-------- BELIEF --------\n";
+    cout << "\nRozklad prawdopodobienstwa wynosi wynosi:\n";
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 5; x++) {
             cout << fixed << setprecision(2) << belief[y][x] << "\t";
@@ -590,8 +242,6 @@ void printBelief(double belief[3][5]) {
         cout << endl;
     }
 }
-
-
 
 void resetBelief(double belief[3][5]) {
     double p = 1.0 / 15.0;
@@ -601,19 +251,11 @@ void resetBelief(double belief[3][5]) {
 }
 
 
-
-
-
-
-
-
-
 int main() {
     if (!NXT::OpenBT(&comm)) {
         cout << "Brak połączenia." << endl;
         return 11;
     }
-
 
     int r, g, b;
 
@@ -638,23 +280,17 @@ int main() {
     double belief[3][5];
     bool firstMeasurement = true;
 
-
-
-
-    cout << "Target ustawiony na: " << target << endl;
     while (true) {
         if (_kbhit()) {
             char c = _getch();
 
             if (c == 'q' || c == 'Q') {
-                cout << "Koniec programu." << endl;
                 NXT::Motor::SetForward(&comm, OUT_C, 0);
                 NXT::Motor::SetForward(&comm, OUT_B, 0);
                 break;
             }
 
             if (c == 'b' || c == 'B') {
-                cout << "Zatrzymano." << endl;
                 NXT::Motor::SetForward(&comm, OUT_C, 0);
                 NXT::Motor::SetForward(&comm, OUT_B, 0);
                 didMove = false;           
@@ -666,28 +302,28 @@ int main() {
                 resetBelief(belief);
                 didMove = false;          
                 firstMeasurement = true;
-                cout << "\nUstawiono target na 0\n";
+                cout << "\nRobot jedzie na polnoc\n";
             }
             else if (c == 'd' || c == 'D') {
                 target = 90;
                 resetBelief(belief);
                 didMove = false;         
                 firstMeasurement = true;
-                cout << "\nUstawiono target na 90\n";
+                cout << "\nRobot jedzie na wschod\n";
             }
             else if (c == 's' || c == 'S') {
                 target = 180;
                 resetBelief(belief);
                 didMove = false; 
                 firstMeasurement = true;
-                cout << "\nUstawiono target na 180\n";
+                cout << "\nRobot jedzie na poludnie\n";
             }
             else if (c == 'a' || c == 'A') {
                 target = 270;
                 resetBelief(belief);
                 didMove = false;         
                 firstMeasurement = true;
-                cout << "\nUstawiono target na 270\n";
+                cout << "\nRobot jedzie na zachod\n";
             }
         }
 
@@ -738,7 +374,7 @@ int main() {
             cout << "R: " << r << "   G: " << g << "   B: " << b << endl;
             int colorId = classifyWithTolerance(r, g, b);
             if (colorId != -1) {
-                cout << "Color ID: " << colorId << endl;
+                cout << "Color " << colorId << endl;
 
                 if (firstMeasurement) {
                     computePositionFromColor(table, colorId, belief);
@@ -761,12 +397,8 @@ int main() {
                 printMostProbable(belief);
             }
             else {
-                cout << "Unknown color" << endl;
+                cout << "Blad koloru" << endl;
             }
-
-
-
-
 
             steer(k1, k2, target, orient, ksi);
             NXT::Motor::SetForward(&comm, OUT_C, k1);
@@ -780,62 +412,9 @@ int main() {
             Wait(2000);
             continue;
         }  
-        
-
     }
                     
     NXT::Sensor::SetColorOff(&comm, IN_2);
     NXT::Sensor::SetSonarOff(&comm, IN_3);
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//#include "NXT++.h"
-//#include <iostream>
-//#include <conio.h>
-//
-//using namespace std;
-//using namespace NXT;
-//
-//Comm::NXTComm comm;
-//
-//int main() {
-//    if (!NXT::OpenBT(&comm)) {
-//        cout << "Brak połączenia." << endl;
-//        return 1;
-//    }
-//
-//    // Set the motors to move forward
-//    const int baseSpeed = 30; // Set speed to 30 (you can adjust it)
-//
-//    // Move the motors forward
-//    NXT::Motor::SetForward(&comm, OUT_B, baseSpeed);
-//    NXT::Motor::SetForward(&comm, OUT_C, baseSpeed);
-//
-//    cout << "Motors moving forward for 3 seconds..." << endl;
-//
-//    // Wait for 3 seconds
-//    Wait(3000);
-//
-//    // Stop the motors after 3 seconds
-//    NXT::Motor::Stop(&comm, OUT_B, true);
-//    NXT::Motor::Stop(&comm, OUT_C, true);
-//
-//    cout << "Motors stopped." << endl;
-//
-//    NXT::Sensor::SetSonarOff(&comm, IN_2); // Turn off the sonar sensor
-//    return 0;
-//}
