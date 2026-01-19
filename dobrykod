@@ -1,0 +1,443 @@
+#include "NXT++.h"
+#include <iostream>
+#include <conio.h>
+#include <iomanip>
+using namespace std;
+using namespace NXT;
+
+Comm::NXTComm comm;
+
+int convert(int target, int orient) {
+    int err = orient - target;
+
+    if (err > 180)       err -= 360;
+    else if (err < -180) err += 360;
+
+    return err;
+}
+
+
+void steer(int& k1, int& k2, int target, int orient) {
+    int cte = convert(target, orient);
+
+    if (cte <= 0) {
+        if (abs(cte) > k1)
+            k2 = -k1;
+        else
+            k2 = k1 + static_cast<int>(0.2 * cte);
+    }
+    else {
+        if (cte > k2)
+            k1 = -k2;
+        else
+            k1 = k2 - static_cast<int>(0.2 * cte);
+    }
+
+    cout << "orient=" << orient
+        << " cte=" << cte
+        << " k1=" << k1
+        << " k2=" << k2 << endl;
+}
+
+
+struct RGB {
+    int r;
+    int g;
+    int b;
+};
+
+const RGB C_WHITE = { 525, 417, 381 }; // 0
+const RGB C_GREEN = { 265, 359, 306 }; // 1
+const RGB C_RED = { 465, 245, 236 }; // 2
+const RGB C_BLACK = { 219,  133,  129 }; // 3
+
+const int TOL = 50;
+
+bool inRange(int v, int center) {
+    return (v >= center - TOL) && (v <= center + TOL);
+}
+
+bool matchRGB(int r, int g, int b, const RGB& c) {
+    return inRange(r, c.r) && inRange(g, c.g) && inRange(b, c.b);
+}
+
+int classifyWithTolerance(int r, int g, int b) {
+    if (matchRGB(r, g, b, C_WHITE)) return 0;
+    if (matchRGB(r, g, b, C_GREEN)) return 1;
+    if (matchRGB(r, g, b, C_RED))   return 2;
+    if (matchRGB(r, g, b, C_BLACK)) return 3;
+    return -1;
+}
+
+// do obliczania prawdopodobienstwa dla jednego pola
+void computePositionFromColor(
+    int map[3][5],
+    int seenColor,
+    double belief[3][5]
+) {
+    int count = 0;
+
+    // liczy ile pól ma dany kolor
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+            if (map[y][x] == seenColor) {
+                count++;
+            }
+        }
+    }
+
+    if (count == 0) {
+        return;
+    }
+
+    double prob = 1.0 / count;
+
+    //przypisanie prawdopodobieñstwa
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+            if (map[y][x] == seenColor) {
+                belief[y][x] = prob;
+            }
+            else {
+                belief[y][x] = 0.0;
+            }
+        }
+    }
+}
+
+
+void normalize(double belief[3][5]) {
+    double sum = 0.0;
+
+    for (int y = 0; y < 3; y++)
+        for (int x = 0; x < 5; x++)
+            sum += belief[y][x];
+
+    if (sum == 0.0) return;
+
+    for (int y = 0; y < 3; y++)
+        for (int x = 0; x < 5; x++)
+            belief[y][x] /= sum;
+}
+
+void senseColor(
+    int map[3][5],
+    int seenColor,
+    double belief[3][5]
+) {
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+            if (map[y][x] == seenColor)
+                belief[y][x] *= 0.8;   // dobry odczyt
+            else
+                belief[y][x] *= 0.2;   // możliwy błąd czujnika
+        }
+    }
+    normalize(belief);
+}
+
+
+void move(double belief[3][5], int dy, int dx) {
+    double next[3][5] = { 0 };
+
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+
+            int newY = y + dy;
+            int newX = x + dx;
+
+            next[y][x] += 0.2 * belief[y][x];
+
+            if (newY >= 0 && newY < 3 && newX >= 0 && newX < 5)
+                next[newY][newX] += 0.8 * belief[y][x];
+            else
+                next[y][x] += 0.8 * belief[y][x];
+        }
+    }
+
+    for (int y = 0; y < 3; y++)
+        for (int x = 0; x < 5; x++)
+            belief[y][x] = next[y][x];
+
+    normalize(belief);
+}
+
+
+
+void printMostProbable(double belief[3][5]) {
+    double maxP = 0.0;
+    int bestY = -1, bestX = -1;
+
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+            if (belief[y][x] > maxP) {
+                maxP = belief[y][x];
+                bestY = y;
+                bestX = x;
+            }
+        }
+    }
+    cout << "Robot jest najprawdopodobniej na: ("
+        << bestY << "," << bestX
+        << ") P=" << maxP << endl;
+}
+
+void printBelief(double belief[3][5]) {
+    cout << "\n===== PRAWDOPODOBIENSTWO [%] =====\n";
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+            cout << setw(6)
+                << fixed << setprecision(1)
+                << belief[y][x] * 100 << "% ";
+        }
+        cout << endl;
+    }
+}
+
+
+
+void resetBelief(double belief[3][5]) {
+    double p = 1.0 / 15.0;
+    for (int y = 0; y < 3; y++)
+        for (int x = 0; x < 5; x++)
+            belief[y][x] = p;
+}
+
+void stopAndReport(
+    Comm::NXTComm* comm,
+    double belief[3][5]
+) {
+    cout << "\n===== ZATRZYMANIE ROBOTA =====\n";
+
+    // zatrzymanie silników
+    NXT::Motor::Stop(comm, OUT_B, true);
+    NXT::Motor::Stop(comm, OUT_C, true);
+
+    // pokazanie aktualnych prawdopodobienstw
+    printBelief(belief);
+    printMostProbable(belief);
+
+    cout << "Robot zatrzymany.\n";
+}
+
+
+
+void collapseBeliefToDefinitive(double belief[3][5], int& finalY, int& finalX) {
+    double maxP = 0.0;
+    finalY = -1;
+    finalX = -1;
+
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+            if (belief[y][x] > maxP) {
+                maxP = belief[y][x];
+                finalY = y;
+                finalX = x;
+            }
+        }
+    }
+
+    for (int y = 0; y < 3; y++)
+        for (int x = 0; x < 5; x++)
+            belief[y][x] = 0.0;
+
+    if (finalY != -1 && finalX != -1) {
+        belief[finalY][finalX] = 1.0;
+    }
+}
+
+
+int main() {
+    if (!NXT::OpenBT(&comm)) {
+        cout << "Brak polaczenia." << endl;
+        return 11;
+    }
+
+    cout << "W - target 0 stopni\n";
+    cout << "D - target 90 stopni\n";
+    cout << "S - target 180 stopni\n";
+    cout << "A - target 270 stopni\n";
+    cout << "E - STOP\n";
+    cout << "Q - KONIEC PROGRAMU\n";
+
+
+    int r, g, b;
+
+    NXT::Sensor::SetSonar(&comm, IN_2);
+    Wait(50);
+
+    int target = 0;
+
+    int lastMoveTarget = target;
+    bool didMove = false;
+
+    int k1 = 10;
+    int k2 = 10;
+
+    int table[3][5] = {
+    {1, 2, 0, 2, 0},
+    {0, 3, 1, 0, 2},
+    {1, 2, 0, 2, 3}
+    };
+
+    double belief[3][5];
+    bool firstMeasurement = true;
+
+    cout << "Target ustawiony na: " << target << endl;
+    while (true) {
+        if (_kbhit()) {
+            char c = _getch();
+
+            if (c == 'q' || c == 'Q') {
+                cout << "Koniec programu." << endl;
+                NXT::Motor::SetForward(&comm, OUT_C, 0);
+                NXT::Motor::SetForward(&comm, OUT_B, 0);
+                break;
+            }
+
+            if (c == 'e' || c == 'E') {
+                stopAndReport(&comm, belief);
+                didMove = false;
+                firstMeasurement = true;
+            }
+
+
+            if (c == 'w' || c == 'W') {
+                target = 0;
+                resetBelief(belief);
+                didMove = false;
+                firstMeasurement = true;
+                cout << "\nUstawiono target na 0\n";
+            }
+            else if (c == 'd' || c == 'D') {
+                target = 90;
+                resetBelief(belief);
+                didMove = false;
+                firstMeasurement = true;
+                cout << "\nUstawiono target na 90\n";
+            }
+            else if (c == 's' || c == 'S') {
+                target = 180;
+                resetBelief(belief);
+                didMove = false;
+                firstMeasurement = true;
+                cout << "\nUstawiono target na 180\n";
+            }
+            else if (c == 'a' || c == 'A') {
+                target = 270;
+                resetBelief(belief);
+                didMove = false;
+                firstMeasurement = true;
+                cout << "\nUstawiono target na 270\n";
+            }
+        }
+
+        int orient = 2 * NXT::Sensor::GetSonarValue(&comm, IN_2);
+
+        if (orient < 0)      orient += 360;
+        if (orient >= 360)   orient -= 360;
+
+        int cte = convert(target, orient);
+
+        cout << "cte=" << cte << endl;
+
+        if (abs(cte) > 5) {
+            if (cte > 0) {
+                NXT::Motor::SetForward(&comm, OUT_B, 5);
+                NXT::Motor::SetReverse(&comm, OUT_C, 5);
+            }
+            else {
+                NXT::Motor::SetReverse(&comm, OUT_B, 5);
+                NXT::Motor::SetForward(&comm, OUT_C, 5);
+            }
+            Wait(100);
+            continue;
+        }
+
+
+        if (abs(cte) < 5) {
+            NXT::Motor::Stop(&comm, OUT_B, true);
+            NXT::Motor::Stop(&comm, OUT_C, true);
+
+            NXT::Sensor::SetColor(&comm, IN_3, 'r');
+            Wait(100);
+            r = NXT::Sensor::GetValue(&comm, IN_3);
+
+            NXT::Sensor::SetColor(&comm, IN_3, 'g');
+            Wait(100);
+            g = NXT::Sensor::GetValue(&comm, IN_3);
+
+            NXT::Sensor::SetColor(&comm, IN_3, 'b');
+            Wait(100);
+            b = NXT::Sensor::GetValue(&comm, IN_3);
+
+
+            cout << "R: " << r << "   G: " << g << "   B: " << b << endl;
+            int colorId = classifyWithTolerance(r, g, b);
+            if (colorId != -1) {
+                cout << "Color ID: " << colorId << endl;
+
+                if (firstMeasurement) {
+                    computePositionFromColor(table, colorId, belief);
+                    firstMeasurement = false;
+                }
+                else {
+
+                    //Funkcja do poruszania się
+                    if (didMove) {
+                        int dy = 0, dx = 0;
+
+                        if (lastMoveTarget == 0)        dy = -1; // północ
+                        else if (lastMoveTarget == 180) dy = 1;  // południe
+                        else if (lastMoveTarget == 90)  dx = 1;  // wschód
+                        else if (lastMoveTarget == 270) dx = -1; // zachód
+
+                        move(belief, dy, dx);
+                    }
+
+                    senseColor(table, colorId, belief);
+                }
+
+                printBelief(belief);
+                printMostProbable(belief);
+            }
+
+            else {
+                cout << "\nNIEZNANY KOLOR – AUTO STOP\n";
+                stopAndReport(&comm, belief);
+                return 0;
+            }
+
+
+
+            steer(k1, k2, target, orient);
+            NXT::Motor::SetForward(&comm, OUT_C, k1);
+            NXT::Motor::SetForward(&comm, OUT_B, k2);
+            cout << "\n\n\n\nWaiting\n\n\n\n";
+            Wait(7200);
+            NXT::Motor::Stop(&comm, OUT_B, true);
+            NXT::Motor::Stop(&comm, OUT_C, true);
+            lastMoveTarget = target;
+            didMove = true;
+            Wait(2000);
+            continue;
+        }
+
+
+    }
+
+
+    int finalY, finalX;
+
+    collapseBeliefToDefinitive(belief, finalY, finalX);
+
+    cout << "\n===== DEFINITYWNA POZYCJA ROBOTA =====\n";
+    cout << "Robot znajduje sie na polu: ("
+        << finalY << ", " << finalX << ")\n";
+
+    printBelief(belief);
+
+    NXT::Sensor::SetColorOff(&comm, IN_2);
+    NXT::Sensor::SetSonarOff(&comm, IN_3);
+    return 0;
+}
