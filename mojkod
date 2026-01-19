@@ -234,7 +234,7 @@ int main()
 
 		char c;
 
-
+		resetProbMap(probMap)
 		while (true) {
 			if (_kbhit()) {
 				c = getch();
