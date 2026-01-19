@@ -1,0 +1,363 @@
+#include "NXT++.h"
+#include <iostream>
+#include <conio.h>
+#include <vector>
+#include <iomanip>
+using namespace std;
+using namespace NXT;
+
+Comm::NXTComm comm;
+
+int convert(int k, int orient) { // funkcja pokazuje ile stopni od orientu jest cel (minusowe wartosci to orient jest na lewo od celu)
+	orient = orient - k;
+	if (orient > 180) orient = orient - 360;
+	else if (orient < -180) orient = 360 + orient;
+	return orient;
+}
+
+
+void steer(int& k1, int& k2, int target, int orient) {
+    int cte = convert(target, orient);
+
+    if (cte <= 0) {
+        if (abs(cte) > k1)
+            k2 = -k1;
+        else
+            k2 = k1 + static_cast<int>(0.2 * cte);
+    }
+    else {
+        if (cte > k2)
+            k1 = -k2;
+        else
+            k1 = k2 - static_cast<int>(0.2 * cte);
+    }
+
+    cout << "orient=" << orient
+        << " cte=" << cte
+        << " k1=" << k1
+        << " k2=" << k2 << endl;
+} 
+
+
+struct RGB {
+	int r;
+	int g;
+	int b;
+};
+
+
+const RGB C_WHITE = { 525, 417, 381 };
+const RGB C_GREEN = { 265, 359, 306 };
+const RGB C_RED = { 523, 245, 236 };
+const RGB C_BLACK = { 219,  133,  129 };
+
+
+bool rangeRGB(int r, int g, int b, const RGB& x) {
+	return (r >= x.r - 50 && r <= x.r + 50) &&
+		(g >= x.g - 50 && g <= x.g + 50) &&
+		(b >= x.b - 50 && b <= x.b + 50);
+}
+
+
+int matchColors(int r, int g, int b) {
+	if (rangeRGB(r, g, b, C_WHITE)) return 0;
+	if (rangeRGB(r, g, b, C_GREEN)) return 1;
+	if (rangeRGB(r, g, b, C_RED))   return 2;
+	if (rangeRGB(r, g, b, C_BLACK)) return 3;
+	return -1;
+}
+
+string whichColor(int color) {
+	switch (color) {
+	case 0: return "bialy";
+	case 1: return "zielony";
+	case 2: return "czerwony";
+	case 3: return "czarny";
+	default: return "nieznany";
+	}
+}
+
+void firstPosition(int map[3][5], int currentColor, double probMap[3][5]) {
+	int count = 0;
+
+	for (int y = 0; y < 3; y++) {
+		for (int x = 0; x < 5; x++) {
+			if (map[y][x] == currentColor) {
+				count++;
+			}
+		}
+	}
+
+	if (count == 0) {
+		return;
+	}
+
+	double prob = 1.0 / count;
+
+	for (int y = 0; y < 3; y++) {
+		for (int x = 0; x < 5; x++) {
+			if (map[y][x] == currentColor) {
+				probMap[y][x] = prob;
+			}
+			else {
+				probMap[y][x] = 0.0;
+			}
+		}
+	}
+}
+
+
+void normalize(double probMap[3][5]) {
+	double sum = 0.0;
+
+	for (int y = 0; y < 3; y++)
+		for (int x = 0; x < 5; x++)
+			sum += probMap[y][x];
+
+	if (sum == 0.0) return;
+
+	for (int y = 0; y < 3; y++)
+		for (int x = 0; x < 5; x++)
+			probMap[y][x] /= sum;
+}
+
+
+void senseColor(int map[3][5], int seenColor, double belief[3][5]) {
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+            if (map[y][x] == seenColor)
+                belief[y][x] *= 0.8;
+            else
+                belief[y][x] *= 0.2;
+        }
+    }
+    normalize(belief);
+}
+
+
+void move(double belief[3][5], int dy, int dx) {
+    double next[3][5] = { 0 };
+
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 5; x++) {
+
+            int newY = y + dy;
+            int newX = x + dx;
+
+            next[y][x] += 0.2 * belief[y][x];
+
+            if (newY >= 0 && newY < 3 && newX >= 0 && newX < 5)
+                next[newY][newX] += 0.8 * belief[y][x];
+            else
+                next[y][x] += 0.8 * belief[y][x];
+        }
+    }
+
+    for (int y = 0; y < 3; y++)
+        for (int x = 0; x < 5; x++)
+            belief[y][x] = next[y][x];
+
+    normalize(belief);
+}
+
+
+void printMaxProbPosition(double probMap[3][5]) {
+	double maxProb = 0.0;
+	int maxY = -1, maxX = -1;
+
+	for (int y = 0; y < 3; y++) {
+		for (int x = 0; x < 5; x++) {
+			if (probMap[y][x] > maxProb) {
+				maxProb = probMap[y][x];
+				maxY = y;
+				maxX = x;
+			}
+		}
+	}
+
+	cout << "Robot z najwiekszym prawdopodobienstwem P = " << maxProb
+		<< " znajduje sie na polu: (" << maxY << "," << maxX << ")" << endl;
+}
+
+
+
+void printProbMap(double probMap[3][5]) {
+	cout << "\nRozklad prawdopodobienstwa wynosi wynosi:\n";
+	for (int y = 0; y < 3; y++) {
+		for (int x = 0; x < 5; x++) {
+			cout << fixed << setprecision(2) << probMap[y][x] << "\t";
+		}
+		cout << endl;
+	}
+}
+
+
+
+void resetProbMap(double probMap[3][5]) {
+	double prob = 1.0 / 15.0;
+	for (int y = 0; y < 3; y++)
+		for (int x = 0; x < 5; x++)
+			probMap[y][x] = prob;
+}
+
+
+int main()
+{
+	srand(time(NULL));
+
+	cout << "Szukanie sygnalu... to moze zajac chwile.\n";
+	if (NXT::OpenBT(&comm)) //initialize the NXT and continue if it succeeds
+	{
+		cout << "Sygnal znaleziony!";
+		cout << "\nPoziom baterii = " << NXT::BatteryLevel(&comm);
+		cout << "\nDostepna pamiec flash = " << NXT::GetAvailableFlash(&comm);
+
+		NXT::Sensor::SetSonar(&comm, IN_2);
+		Wait(50);
+
+		int k1 = 20;
+		int k2 = 20;
+		int orientacja;
+		int r, g, b;
+		int target = 0;
+		int lastMoveTarget = target;
+		bool didMove = false;
+		bool firstMeasurement = true;
+
+		int map[3][5] = {
+		{1, 2, 0, 2, 0},
+		{0, 3, 1, 0, 2},
+		{1, 2, 0, 2, 3}
+		};
+
+		double probMap[3][5];
+
+		char c;
+
+
+		while (true) {
+			if (_kbhit()) {
+				c = getch();
+
+				if (c == 'X' || c == 'x')
+				{
+					NXT::Motor::SetForward(&comm, OUT_C, 0);
+					NXT::Motor::SetForward(&comm, OUT_B, 0);
+					NXT::Motor::Stop(&comm, OUT_C, 0);
+					NXT::Motor::Stop(&comm, OUT_B, 0);
+					break;
+				}
+
+				if (c == 'W' || c == 'w') {
+					target = 0;
+					cout << "\nRobot jedzie na polnoc\n";
+				}
+				else if (c == 'D' || c == 'd') {
+					target = 90;
+					cout << "\nRobot jedzie na wschod\n";
+				}
+				else if (c == 'S' || c == 's') {
+					target = 180;
+					cout << "\nRobot jedzie na poludnie\n";
+				}
+				else if (c == 'A' || c == 'a') {
+					target = 270;
+					cout << "\nRobot jedzie na zachod\n";
+				}
+			}
+
+			orientacja = 2 * NXT::Sensor::GetSonarValue(&comm, IN_2);
+			Wait(50);
+			int cte = convert(target, orientacja);
+
+			if (cte > 2) {  // ewentualnie dostosowac
+				NXT::Motor::SetForward(&comm, OUT_B, 10);
+				NXT::Motor::SetReverse(&comm, OUT_C, 10);
+			}
+			else if (cte < -2) {
+				NXT::Motor::SetForward(&comm, OUT_C, 10);
+				NXT::Motor::SetReverse(&comm, OUT_B, 10);
+			}
+			Wait(100);
+
+			if (cte >= -2 && cte <= 2) {
+				NXT::Motor::Stop(&comm, OUT_B, true);
+				NXT::Motor::Stop(&comm, OUT_C, true);
+
+				NXT::Sensor::SetColor(&comm, IN_3, 'r');
+				Wait(100);
+				r = NXT::Sensor::GetValue(&comm, IN_3);
+
+				NXT::Sensor::SetColor(&comm, IN_3, 'g');
+				Wait(100);
+				g = NXT::Sensor::GetValue(&comm, IN_3);
+
+				NXT::Sensor::SetColor(&comm, IN_3, 'b');
+				Wait(100);
+				b = NXT::Sensor::GetValue(&comm, IN_3);
+
+
+				cout << "R: " << r << "   G: " << g << "   B: " << b << endl;
+				int colorId = matchColors(r, g, b);
+				string colorName = whichColor(colorId);
+
+				if (colorId != -1) {
+					cout << "Kolor " << colorName << endl;
+
+					if (firstMeasurement) {
+						firstPosition(map, colorId, probMap);
+						firstMeasurement = false;
+					}
+
+					else {
+						if (didMove) {
+							int dy = 0, dx = 0;
+
+							if (lastMoveTarget == 0)        dy = -1;
+							else if (lastMoveTarget == 90)  dx = 1;
+							else if (lastMoveTarget == 180) dy = 1;
+							else if (lastMoveTarget == 270) dx = -1;
+
+							move(probMap, dy, dx);
+                    	}	
+						senseColor(map, colorId, probMap);
+					}
+					printProbMap(probMap);
+					cout << " \n\n\n";
+					printMaxProbPosition(probMap);
+				}
+
+				else {
+					cout << "Nie wykryto odpowiedniego koloru" << endl;
+					NXT::Motor::Stop(&comm, OUT_B, true);
+					NXT::Motor::Stop(&comm, OUT_C, true);
+					printProbMap(probMap);
+					cout << " \n\n\n";
+					printMaxProbPosition(probMap);
+					return 0;
+				}
+
+				steer(k1, k2, target, orientacja);
+				NXT::Motor::SetForward(&comm, OUT_C, k1);
+				NXT::Motor::SetForward(&comm, OUT_B, k2);
+				cout << "\n\n\nRobot w trakcie ruchu...\n\n\n";
+				Wait(3500);
+				NXT::Motor::Stop(&comm, OUT_B, true);
+				NXT::Motor::Stop(&comm, OUT_C, true);
+				lastMoveTarget = target;
+				didMove = true;
+				Wait(1000);
+				continue;
+			}
+		}
+
+		NXT::StopProgram(&comm);
+
+	}
+	NXT::Close(&comm); //close communication with NXT
+
+	cout << "\n\nPress ENTER to close program";
+	getchar();
+
+	return 0;
+}
